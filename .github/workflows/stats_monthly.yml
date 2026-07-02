@@ -1,9 +1,7 @@
 name: Stats mensuelles ECV
 
 on:
-  schedule:
-    - cron: "0 8 5 * *"   # 5 de chaque mois à 8h UTC (laisse le temps de saisir les stats)
-  workflow_dispatch:        # déclenchement manuel possible
+  workflow_dispatch:   # déclenché par cron-job.org le 2 de chaque mois à 23h59
 
 jobs:
   send-stats:
