@@ -1,0 +1,38 @@
+name: Stats mensuelles ECV
+
+on:
+  schedule:
+    - cron: "0 8 5 * *"   # 5 de chaque mois à 8h UTC (laisse le temps de saisir les stats)
+  workflow_dispatch:        # déclenchement manuel possible
+
+jobs:
+  send-stats:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            google-api-python-client==2.131.0 \
+            google-auth==2.29.0 \
+            google-auth-oauthlib==1.2.0
+
+      - name: Update Google Sheet
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          GOOGLE_TOKENS_JSON: ${{ secrets.GOOGLE_TOKENS_JSON }}
+        run: python scripts/update_community_sheet.py
+
+      - name: Send email
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          GOOGLE_TOKENS_JSON: ${{ secrets.GOOGLE_TOKENS_JSON }}
+        run: python scripts/send_community_email.py
