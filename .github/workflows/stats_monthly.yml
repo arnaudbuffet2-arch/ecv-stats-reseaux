@@ -29,7 +29,7 @@ jobs:
         run: |
           pip install             google-api-python-client==2.131.0             google-auth==2.29.0             google-auth-oauthlib==1.2.0             requests             PyNaCl
 
-      - name: Fetch stats + refresh IG token + update Sheet
+      - name: Fetch stats + refresh IG token + update Sheet + email
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
@@ -39,6 +39,7 @@ jobs:
           WINDSOR_TIKTOK_ACCOUNT_ID: ${{ secrets.WINDSOR_TIKTOK_ACCOUNT_ID }}
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
           GOOGLE_TOKENS_JSON: ${{ secrets.GOOGLE_TOKENS_JSON }}
+          GOOGLE_TOKENS_SITE_JSON: ${{ secrets.GOOGLE_TOKENS_SITE_JSON }}
           GH_PAT: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
           TARGET_YEAR: ${{ inputs.target_year }}
