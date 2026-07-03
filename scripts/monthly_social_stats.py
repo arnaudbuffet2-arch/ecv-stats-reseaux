@@ -53,7 +53,7 @@ GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
 
-FB_APP_ID  = os.environ.get("FB_APP_ID", "2316368072184834")
+FB_APP_ID  = os.environ.get("FB_APP_ID", "1791342518942491")
 GH_REPO    = os.environ.get("GH_REPO", "arnaudbuffet2-arch/ecv-stats-reseaux")
 
 
