@@ -1,10 +1,12 @@
 name: Stats mensuelles ECV
 
 on:
-  workflow_dispatch:   # déclenché par cron-job.org le 2 de chaque mois à 23h59
+  schedule:
+    - cron: "0 7 1 * *"   # 1er de chaque mois a 7h UTC
+  workflow_dispatch:
 
 jobs:
-  send-stats:
+  stats:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,16 +23,20 @@ jobs:
           pip install \
             google-api-python-client==2.131.0 \
             google-auth==2.29.0 \
-            google-auth-oauthlib==1.2.0
+            google-auth-oauthlib==1.2.0 \
+            requests \
+            PyNaCl
 
-      - name: Update Google Sheet
+      - name: Fetch stats + refresh IG token + update Sheet
         env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          FB_APP_ID: ${{ secrets.FB_APP_ID }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          WINDSOR_TIKTOK_ACCOUNT_ID: ${{ secrets.WINDSOR_TIKTOK_ACCOUNT_ID }}
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
           GOOGLE_TOKENS_JSON: ${{ secrets.GOOGLE_TOKENS_JSON }}
-        run: python scripts/update_community_sheet.py
-
-      - name: Send email
-        env:
-          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
-          GOOGLE_TOKENS_JSON: ${{ secrets.GOOGLE_TOKENS_JSON }}
-        run: python scripts/send_community_email.py
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GH_REPO: ${{ github.repository }}
+        run: python scripts/monthly_social_stats.py
