@@ -44,17 +44,20 @@ SHEET_ID = "1OReCrVznxOtrxTzSRqpsKEu0lvR0cwdPoCixFKhgyxs"
 TAB      = "community management"
 ROW_BASE = {"tiktok": 4, "instagram": 21, "youtube": 38}
 
-IG_USER_ID            = os.environ.get("IG_USER_ID", "17841478684062202")
-WINDSOR_API_KEY       = os.environ.get("WINDSOR_API_KEY", "43f9bb233ba077e6487ec87ae59ef8223db8")
-WINDSOR_TIKTOK_ID     = os.environ.get("WINDSOR_TIKTOK_ACCOUNT_ID", "_000oB0WQoiB3lc6DPT71YnmS_hkex9HZ6hJ")
+def _env(key: str, default: str = "") -> str:
+    return os.environ.get(key, default).lstrip("﻿").strip()
+
+IG_USER_ID            = _env("IG_USER_ID", "17841478684062202")
+WINDSOR_API_KEY       = _env("WINDSOR_API_KEY", "43f9bb233ba077e6487ec87ae59ef8223db8")
+WINDSOR_TIKTOK_ID     = _env("WINDSOR_TIKTOK_ACCOUNT_ID", "_000oB0WQoiB3lc6DPT71YnmS_hkex9HZ6hJ")
 
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
 
-FB_APP_ID  = os.environ.get("FB_APP_ID", "1791342518942491")
-GH_REPO    = os.environ.get("GH_REPO", "arnaudbuffet2-arch/ecv-stats-reseaux")
+FB_APP_ID  = _env("FB_APP_ID", "1791342518942491")
+GH_REPO    = _env("GH_REPO", "arnaudbuffet2-arch/ecv-stats-reseaux")
 
 
 # ── Périodes ────────────────────────────────────────────────────────────
