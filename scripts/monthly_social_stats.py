@@ -336,8 +336,12 @@ def write_month(service, month_num: int, tiktok: list, instagram: list, youtube:
 # ── Main ─────────────────────────────────────────────────────────────────
 
 def main():
-    today      = date.today()
-    year, month = prev_month(today)
+    target_year  = os.environ.get("TARGET_YEAR")
+    target_month = os.environ.get("TARGET_MONTH")
+    if target_year and target_month:
+        year, month = int(target_year), int(target_month)
+    else:
+        year, month = prev_month(date.today())
     print(f"Traitement : {year}-{month:02d}")
 
     # Auth Google
