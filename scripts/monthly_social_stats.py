@@ -125,7 +125,7 @@ def get_google_creds() -> Credentials:
 
 def _update_github_secret(name: str, value: str):
     """Chiffre et pousse un secret dans le repo GitHub via l'API."""
-    gh_pat = os.environ.get("GH_PAT", "")
+    gh_pat = _env("GH_PAT")
     if not gh_pat:
         return
     try:
@@ -159,7 +159,7 @@ def _update_github_secret(name: str, value: str):
 def ig_refresh_token(token: str) -> str:
     """Échange le token EAAL contre un nouveau token 60 jours via fb_exchange_token.
     Met à jour le secret GitHub IG_ACCESS_TOKEN automatiquement si GH_PAT est présent."""
-    app_secret = os.environ.get("FB_APP_SECRET", "")
+    app_secret = _env("FB_APP_SECRET")
     if not app_secret:
         print("Avertissement : FB_APP_SECRET manquant — skip refresh token.")
         return token
@@ -199,8 +199,8 @@ def fetch_instagram(token: str, year: int, month: int) -> dict:
     ).json()
     followers = me.get("followers_count", 0)
 
-    # Insights : impressions (vues), likes, comments, shares
-    metrics = ["impressions", "likes", "comments", "shares"]
+    # Insights : views (remplace impressions depuis API v18+), likes, comments, shares
+    metrics = ["views", "likes", "comments", "shares"]
     insights = requests.get(
         f"https://graph.facebook.com/v19.0/{IG_USER_ID}/insights",
         params={
@@ -224,11 +224,11 @@ def fetch_instagram(token: str, year: int, month: int) -> dict:
             if since <= day <= until:
                 totals[m_name] = totals.get(m_name, 0) + val.get("value", 0)
 
-    print(f"Instagram : followers={followers}, vues={totals['impressions']}, "
+    print(f"Instagram : followers={followers}, vues={totals['views']}, "
           f"likes={totals['likes']}, comments={totals['comments']}, shares={totals['shares']}")
     return {
         "followers":    followers,
-        "views":        totals["impressions"],
+        "views":        totals["views"],
         "likes":        totals["likes"],
         "comments":     totals["comments"],
         "shares":       totals["shares"],
