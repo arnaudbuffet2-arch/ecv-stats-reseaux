@@ -94,6 +94,33 @@ def instagram_bounds(year: int, month: int) -> tuple[str, str]:
 
 # ── Auth Google ─────────────────────────────────────────────────────────
 
+def get_gmail_creds() -> Credentials:
+    """Credentials avec scope gmail.compose (GOOGLE_TOKENS_SITE_JSON)."""
+    creds_env  = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    tokens_env = os.environ.get("GOOGLE_TOKENS_SITE_JSON")
+
+    ecv_dir = Path.home() / ".ecv"
+
+    if creds_env and tokens_env:
+        cred_data = json.loads(creds_env.lstrip("﻿"))
+        tokens    = json.loads(tokens_env.lstrip("﻿"))
+    else:
+        cred_data = json.loads((ecv_dir / "credentials.json").read_text())
+        tokens    = json.loads((ecv_dir / "tokens_site.json").read_text())
+
+    client_info = cred_data.get("installed") or cred_data.get("web")
+    creds = Credentials(
+        token         = None,
+        refresh_token = tokens.get("refresh_token"),
+        token_uri     = "https://oauth2.googleapis.com/token",
+        client_id     = client_info["client_id"],
+        client_secret = client_info["client_secret"],
+        scopes        = ["https://www.googleapis.com/auth/gmail.compose"],
+    )
+    creds.refresh(Request())
+    return creds
+
+
 def get_google_creds() -> Credentials:
     creds_env  = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     tokens_env = os.environ.get("GOOGLE_TOKENS_JSON")
@@ -293,6 +320,99 @@ def fetch_youtube(creds: Credentials, year: int, month: int) -> dict:
             "comments": comments, "shares": shares}
 
 
+# ── Email stats ─────────────────────────────────────────────────────────
+
+import base64
+from email.mime.text import MIMEText
+
+MONTHS_FR = ["Janvier","Février","Mars","Avril","Mai","Juin",
+             "Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
+
+
+def _pct(new, old):
+    if not old:
+        return "—"
+    p = (new - old) / old * 100
+    sign = "+" if p >= 0 else ""
+    return f"{sign}{p:.1f}%"
+
+
+def _fmt(n):
+    return f"{int(n):,}".replace(",", " ")
+
+
+def build_stats_email(year: int, month: int, tt: list, ig: list, yt: list,
+                      p_tt: list, p_ig: list, p_yt: list) -> tuple[str, str]:
+    """Retourne (subject, body). Listes format : [abo, vues, com, shares, likes]."""
+    period = f"{MONTHS_FR[month - 1]} {year}"
+
+    cons_abo    = tt[0] + ig[0] + yt[0]
+    cons_vues   = tt[1] + ig[1] + yt[1]
+    cons_com    = tt[2] + ig[2] + yt[2]
+    cons_shares = tt[3] + ig[3] + yt[3]
+    cons_likes  = tt[4] + ig[4] + yt[4]
+    pcons_abo    = p_tt[0] + p_ig[0] + p_yt[0]
+    pcons_vues   = p_tt[1] + p_ig[1] + p_yt[1]
+    pcons_com    = p_tt[2] + p_ig[2] + p_yt[2]
+    pcons_shares = p_tt[3] + p_ig[3] + p_yt[3]
+    pcons_likes  = p_tt[4] + p_ig[4] + p_yt[4]
+
+    lines = [
+        "Bonjour,",
+        "",
+        f"Voici le récapitulatif des statistiques community management — {period} :",
+        "(Les pourcentages d'évolution sont calculés par rapport au mois précédent.)",
+        "",
+        "── TikTok ──────────────────────────────────",
+        f"  Abonnés     : {_fmt(tt[0])}  ({_pct(tt[0], p_tt[0])})",
+        f"  Vues        : {_fmt(tt[1])}  ({_pct(tt[1], p_tt[1])})",
+        f"  Commentaires: {_fmt(tt[2])}  ({_pct(tt[2], p_tt[2])})",
+        f"  Partages    : {_fmt(tt[3])}  ({_pct(tt[3], p_tt[3])})",
+        f"  J'aime      : {_fmt(tt[4])}  ({_pct(tt[4], p_tt[4])})",
+        "",
+        "── Instagram ───────────────────────────────",
+        f"  Abonnés     : {_fmt(ig[0])}  ({_pct(ig[0], p_ig[0])})",
+        f"  Vues        : {_fmt(ig[1])}  ({_pct(ig[1], p_ig[1])})",
+        f"  Commentaires: {_fmt(ig[2])}  ({_pct(ig[2], p_ig[2])})",
+        f"  Partages    : {_fmt(ig[3])}  ({_pct(ig[3], p_ig[3])})",
+        f"  J'aime      : {_fmt(ig[4])}  ({_pct(ig[4], p_ig[4])})",
+        "",
+        "── YouTube ─────────────────────────────────",
+        f"  Abonnés     : {_fmt(yt[0])}  ({_pct(yt[0], p_yt[0])})",
+        f"  Vues        : {_fmt(yt[1])}  ({_pct(yt[1], p_yt[1])})",
+        f"  Commentaires: {_fmt(yt[2])}  ({_pct(yt[2], p_yt[2])})",
+        f"  Partages    : {_fmt(yt[3])}  ({_pct(yt[3], p_yt[3])})",
+        f"  J'aime      : {_fmt(yt[4])}  ({_pct(yt[4], p_yt[4])})",
+        "",
+        "── Consolidé ───────────────────────────────",
+        f"  Abonnés     : {_fmt(cons_abo)}  ({_pct(cons_abo, pcons_abo)})",
+        f"  Vues        : {_fmt(cons_vues)}  ({_pct(cons_vues, pcons_vues)})",
+        f"  Commentaires: {_fmt(cons_com)}  ({_pct(cons_com, pcons_com)})",
+        f"  Partages    : {_fmt(cons_shares)}  ({_pct(cons_shares, pcons_shares)})",
+        f"  J'aime      : {_fmt(cons_likes)}  ({_pct(cons_likes, pcons_likes)})",
+        "",
+        "Cordialement,",
+        "de la part de Arno CM Management - Arnaud Buffet",
+    ]
+    subject = f"Stats Community Management — {period}"
+    return subject, "\n".join(lines)
+
+
+def send_stats_email(year: int, month: int, tt: list, ig: list, yt: list,
+                     p_tt: list, p_ig: list, p_yt: list):
+    subject, body = build_stats_email(year, month, tt, ig, yt, p_tt, p_ig, p_yt)
+    creds = get_gmail_creds()
+    svc   = build("gmail", "v1", credentials=creds)
+    msg   = MIMEText(body, "plain", "utf-8")
+    msg["From"]    = "emilecoachvocal@gmail.com"
+    msg["To"]      = "emilecoachvocal@gmail.com"
+    msg["Cc"]      = "arnaud.buffet2@gmail.com, benedictemoyat.rp@gmail.com"
+    msg["Subject"] = subject
+    raw    = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    result = svc.users().messages().send(userId="me", body={"raw": raw}).execute()
+    print(f"Email stats envoyé : {result['id']}")
+
+
 # ── Sheet : lecture cumulatif précédent ─────────────────────────────────
 
 def read_prev_cumul(service, month_num: int) -> dict:
@@ -400,6 +520,10 @@ def main():
     print(f"YouTube cumulatif : {youtube_row}")
 
     write_month(sheets, month, tiktok_row, instagram_row, youtube_row)
+
+    print("Envoi email stats...")
+    send_stats_email(year, month, tiktok_row, instagram_row, youtube_row,
+                     p_tt, p_ig, p_yt)
 
 
 if __name__ == "__main__":
