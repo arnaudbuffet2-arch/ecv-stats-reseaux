@@ -199,15 +199,16 @@ def fetch_instagram(token: str, year: int, month: int) -> dict:
     ).json()
     followers = me.get("followers_count", 0)
 
-    # Insights : views (remplace impressions depuis API v18+), likes, comments, shares
+    # Insights : metric_type=total_value requis depuis API v22+ pour ces métriques
     metrics = ["views", "likes", "comments", "shares"]
     insights = requests.get(
         f"https://graph.facebook.com/v19.0/{IG_USER_ID}/insights",
         params={
-            "metric": ",".join(metrics),
-            "period": "day",
-            "since": since,
-            "until": until,
+            "metric":      ",".join(metrics),
+            "period":      "day",
+            "metric_type": "total_value",
+            "since":       since,
+            "until":       until,
             "access_token": token,
         },
         timeout=30,
@@ -219,9 +220,11 @@ def fetch_instagram(token: str, year: int, month: int) -> dict:
     totals = {m: 0 for m in metrics}
     for item in insights.get("data", []):
         m_name = item["name"]
-        for val in item.get("values", []):
-            day = val.get("end_time", "")[:10]
-            if since <= day <= until:
+        tv = item.get("total_value", {})
+        if "value" in tv:
+            totals[m_name] = tv["value"]
+        else:
+            for val in item.get("values", []):
                 totals[m_name] = totals.get(m_name, 0) + val.get("value", 0)
 
     print(f"Instagram : followers={followers}, vues={totals['views']}, "
