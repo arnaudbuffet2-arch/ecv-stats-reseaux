@@ -4,6 +4,13 @@ on:
   schedule:
     - cron: "0 7 1 * *"   # 1er de chaque mois a 7h UTC
   workflow_dispatch:
+    inputs:
+      target_year:
+        description: "Annee cible (ex: 2026). Vide = mois precedent auto."
+        required: false
+      target_month:
+        description: "Mois cible 1-12 (ex: 5 pour mai). Vide = mois precedent auto."
+        required: false
 
 jobs:
   stats:
@@ -20,12 +27,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install \
-            google-api-python-client==2.131.0 \
-            google-auth==2.29.0 \
-            google-auth-oauthlib==1.2.0 \
-            requests \
-            PyNaCl
+          pip install             google-api-python-client==2.131.0             google-auth==2.29.0             google-auth-oauthlib==1.2.0             requests             PyNaCl
 
       - name: Fetch stats + refresh IG token + update Sheet
         env:
@@ -39,4 +41,6 @@ jobs:
           GOOGLE_TOKENS_JSON: ${{ secrets.GOOGLE_TOKENS_JSON }}
           GH_PAT: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
+          TARGET_YEAR: ${{ inputs.target_year }}
+          TARGET_MONTH: ${{ inputs.target_month }}
         run: python scripts/monthly_social_stats.py
