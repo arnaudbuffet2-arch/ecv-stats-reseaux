@@ -27,7 +27,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install             google-api-python-client==2.131.0             google-auth==2.29.0             google-auth-oauthlib==1.2.0             requests             PyNaCl
+          pip install \
+            google-api-python-client==2.131.0 \
+            google-auth==2.29.0 \
+            google-auth-oauthlib==1.2.0 \
+            requests \
+            PyNaCl
 
       - name: Fetch stats + refresh IG token + update Sheet + email
         env:
@@ -45,3 +50,15 @@ jobs:
           TARGET_YEAR: ${{ inputs.target_year }}
           TARGET_MONTH: ${{ inputs.target_month }}
         run: python scripts/monthly_social_stats.py
+
+      - name: Save updated Google tokens
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -f ~/.ecv/tokens.json ]; then
+            cat ~/.ecv/tokens.json | gh secret set GOOGLE_TOKENS_JSON --repo ${{ github.repository }}
+          fi
+          if [ -f ~/.ecv/tokens_site.json ]; then
+            cat ~/.ecv/tokens_site.json | gh secret set GOOGLE_TOKENS_SITE_JSON --repo ${{ github.repository }}
+          fi
