@@ -100,6 +100,7 @@ def get_gmail_creds() -> Credentials:
     tokens_env = os.environ.get("GOOGLE_TOKENS_SITE_JSON")
 
     ecv_dir = Path.home() / ".ecv"
+    ecv_dir.mkdir(exist_ok=True)
 
     if creds_env and tokens_env:
         cred_data = json.loads(creds_env.lstrip("﻿"))
@@ -118,6 +119,9 @@ def get_gmail_creds() -> Credentials:
         scopes        = ["https://www.googleapis.com/auth/gmail.compose"],
     )
     creds.refresh(Request())
+    # Sauvegarder le token rafraîchi pour autonomie du système
+    tokens["access_token"] = creds.token
+    (ecv_dir / "tokens_site.json").write_text(json.dumps(tokens, indent=2))
     return creds
 
 
@@ -126,6 +130,7 @@ def get_google_creds() -> Credentials:
     tokens_env = os.environ.get("GOOGLE_TOKENS_JSON")
 
     ecv_dir = Path.home() / ".ecv"
+    ecv_dir.mkdir(exist_ok=True)
 
     if creds_env and tokens_env:
         cred_data = json.loads(creds_env.lstrip("﻿"))
@@ -145,6 +150,9 @@ def get_google_creds() -> Credentials:
     )
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
+        tokens["access_token"] = creds.token
+    # Sauvegarder le token rafraîchi pour autonomie du système
+    (ecv_dir / "tokens.json").write_text(json.dumps(tokens, indent=2))
     return creds
 
 
@@ -429,7 +437,7 @@ def read_prev_cumul(service, month_num: int) -> dict:
             spreadsheetId=SHEET_ID, range=rng
         ).execute()
         vals = data.get("values", [[0]*5])[0]
-        parsed = [int(str(v).replace(" ", "").replace(" ", "").replace(" ", "").replace(",", "") or 0) for v in vals]
+        parsed = [int(str(v).replace(" ", "").replace(" ", "").replace(" ", "").replace(",", "") or 0) for v in vals]
         result[platform] = parsed + [0] * (5 - len(parsed))
 
     return result
@@ -507,7 +515,7 @@ def main():
                      p_ig[3] + ig["shares"],
                      p_ig[4] + ig["likes"]]
 
-    # Abonnés YouTube = snapshot précédent + gain net du mois (pas de scope youtube.readonly nécessaire)
+    # Abonnés YouTube = snapshot précédent + gain net du mois
     yt_subs = p_yt[0] + yt["net_subs"]
     youtube_row   = [yt_subs,
                      p_yt[1] + yt["views"],
