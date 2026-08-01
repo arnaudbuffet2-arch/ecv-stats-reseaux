@@ -30,6 +30,7 @@ GitHub Actions : appelé par le workflow "Stats mensuelles ECV"
 
 import json
 import os
+import re
 import sys
 import requests
 from datetime import date, timedelta
@@ -437,7 +438,7 @@ def read_prev_cumul(service, month_num: int) -> dict:
             spreadsheetId=SHEET_ID, range=rng
         ).execute()
         vals = data.get("values", [[0]*5])[0]
-        parsed = [int(str(v).replace(" ", "").replace(" ", "").replace(" ", "").replace(",", "") or 0) for v in vals]
+        parsed = [int(re.sub(r"[^\d]", "", str(v)) or 0) for v in vals]
         result[platform] = parsed + [0] * (5 - len(parsed))
 
     return result
