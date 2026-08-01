@@ -53,6 +53,7 @@ jobs:
 
       - name: Save updated Google tokens
         if: always()
+        continue-on-error: true   # cosmétique : le refresh_token n'est pas modifié par ce flow
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
