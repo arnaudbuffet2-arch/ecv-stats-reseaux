@@ -5,6 +5,7 @@ Plateformes :
   Instagram  : Meta Graph API (token long-lived, auto-refresh)
   TikTok     : Windsor.ai REST API
   YouTube    : YouTube Analytics API (OAuth Google)
+  Facebook   : saisie manuelle dans le Sheet (profil personnel, pas d'API)
 
 Fonctionnement :
   - Détermine automatiquement le mois précédent
@@ -22,7 +23,7 @@ Secrets GitHub requis (ecv-stats-reseaux repo) :
   GOOGLE_TOKENS_JSON       Contenu de ~/.ecv/tokens.json (avec yt-analytics scope)
   FB_APP_ID                ID app Meta ECV (2316368072184834)
   FB_APP_SECRET            Secret app Meta ECV (dans Meta for Developers → ECV → Paramètres)
-  GH_PAT                   PAT GitHub avec permission secrets:write (renouvellement auto token IG)
+  GH_PAT                  PAT GitHub avec permission secrets:write (renouvellement auto token IG)
 
 Usage local : python scripts/monthly_social_stats.py
 GitHub Actions : appelé par le workflow "Stats mensuelles ECV"
@@ -393,7 +394,8 @@ def build_stats_email(year: int, month: int, tt: list, ig: list, yt: list,
         f"  Partages    : {_fmt(yt[3])}  ({_pct(yt[3], p_yt[3])})",
         f"  J'aime      : {_fmt(yt[4])}  ({_pct(yt[4], p_yt[4])})",
         "",
-        "── Consolidé ───────────────────────────────",
+        "",
+        "── Consolidé (TikTok + Instagram + YouTube) ──",
         f"  Abonnés     : {_fmt(cons_abo)}  ({_pct(cons_abo, pcons_abo)})",
         f"  Vues        : {_fmt(cons_vues)}  ({_pct(cons_vues, pcons_vues)})",
         f"  Commentaires: {_fmt(cons_com)}  ({_pct(cons_com, pcons_com)})",
