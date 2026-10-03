@@ -2,7 +2,7 @@ name: Stats mensuelles ECV
 
 on:
   schedule:
-    - cron: "0 7 1 * *"   # 1er de chaque mois a 7h UTC
+    - cron: "5 0 1 * *"   # 1er de chaque mois a 00h05 UTC (02h05 Paris) : snapshot abonnés = fin du 30
   workflow_dispatch:
     inputs:
       target_year:
