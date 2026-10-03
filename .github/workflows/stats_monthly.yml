@@ -36,8 +36,7 @@ jobs:
 
       - name: Fetch stats + refresh IG token + update Sheet + email
         env:
-          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          WINDSOR_IG_API_KEY: ${{ secrets.WINDSOR_IG_API_KEY }}
           FB_APP_ID: ${{ secrets.FB_APP_ID }}
           FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
           WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}

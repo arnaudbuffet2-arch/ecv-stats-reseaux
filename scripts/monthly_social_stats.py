@@ -2,7 +2,7 @@
 monthly_social_stats.py — Fetch mensuel des stats sociales ECV + écriture Sheet.
 
 Plateformes :
-  Instagram  : Meta Graph API (token long-lived, auto-refresh)
+  Instagram  : Windsor.ai REST API (compte emilecoachvocal)
   TikTok     : Windsor.ai REST API
   YouTube    : YouTube Analytics API (OAuth Google)
   Facebook   : saisie manuelle dans le Sheet (profil personnel, pas d'API)
@@ -15,8 +15,7 @@ Fonctionnement :
   - Si le token Instagram est rafraîchi, l'écrit dans GITHUB_OUTPUT
 
 Secrets GitHub requis (ecv-stats-reseaux repo) :
-  IG_ACCESS_TOKEN          Instagram long-lived token (auto-rafraîchi)
-  IG_USER_ID               17841478684062202
+  WINDSOR_IG_API_KEY       Clé API Windsor.ai du compte emilecoachvocal (Instagram)
   WINDSOR_API_KEY          Clé API Windsor.ai
   WINDSOR_TIKTOK_ACCOUNT_ID  _000oB0WQoiB3lc6DPT71YnmS_hkex9HZ6hJ
   GOOGLE_CREDENTIALS_JSON  Contenu de ~/.ecv/credentials.json
@@ -49,7 +48,8 @@ ROW_BASE = {"tiktok": 4, "instagram": 21, "youtube": 38}
 def _env(key: str, default: str = "") -> str:
     return os.environ.get(key, default).lstrip("﻿").strip()
 
-IG_USER_ID            = _env("IG_USER_ID", "17841478684062202")
+WINDSOR_IG_API_KEY    = _env("WINDSOR_IG_API_KEY")
+WINDSOR_IG_ACCOUNT_ID = _env("WINDSOR_IG_ACCOUNT_ID", "17841478684062202")
 WINDSOR_API_KEY       = _env("WINDSOR_API_KEY", "43f9bb233ba077e6487ec87ae59ef8223db8")
 WINDSOR_TIKTOK_ID     = _env("WINDSOR_TIKTOK_ACCOUNT_ID", "_000oB0WQoiB3lc6DPT71YnmS_hkex9HZ6hJ")
 
@@ -158,121 +158,54 @@ def get_google_creds() -> Credentials:
     return creds
 
 
-# ── Instagram ───────────────────────────────────────────────────────────
+# ── Instagram (Windsor.ai) ─────────────────────────────────────────────
 
-def _update_github_secret(name: str, value: str):
-    """Chiffre et pousse un secret dans le repo GitHub via l'API."""
-    gh_pat = _env("GH_PAT")
-    if not gh_pat:
-        return
-    try:
-        import base64
-        from nacl import encoding, public as nacl_public
-
-        headers = {
-            "Authorization": f"Bearer {gh_pat}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-        pk = requests.get(
-            f"https://api.github.com/repos/{GH_REPO}/actions/secrets/public-key",
-            headers=headers, timeout=10,
-        ).json()
-        pub_key   = nacl_public.PublicKey(pk["key"].encode(), encoding.Base64Encoder)
-        encrypted = base64.b64encode(
-            nacl_public.SealedBox(pub_key).encrypt(value.encode())
-        ).decode()
-        requests.put(
-            f"https://api.github.com/repos/{GH_REPO}/actions/secrets/{name}",
-            headers=headers,
-            json={"encrypted_value": encrypted, "key_id": pk["key_id"]},
-            timeout=10,
-        ).raise_for_status()
-        print(f"Secret GitHub '{name}' mis à jour.")
-    except Exception as e:
-        print(f"Avertissement : mise à jour secret GitHub échouée : {e}")
-
-
-def ig_refresh_token(token: str) -> str:
-    """Échange le token EAAL contre un nouveau token 60 jours via fb_exchange_token.
-    Met à jour le secret GitHub IG_ACCESS_TOKEN automatiquement si GH_PAT est présent."""
-    app_secret = _env("FB_APP_SECRET")
-    if not app_secret:
-        print("Avertissement : FB_APP_SECRET manquant — skip refresh token.")
-        return token
-    try:
-        resp = requests.get(
-            "https://graph.facebook.com/oauth/access_token",
-            params={
-                "grant_type":        "fb_exchange_token",
-                "client_id":         FB_APP_ID,
-                "client_secret":     app_secret,
-                "fb_exchange_token": token,
-            },
-            timeout=15,
-        )
-        data = resp.json()
-        if "access_token" in data:
-            new_token = data["access_token"]
-            expires   = data.get("expires_in", "?")
-            print(f"Token Instagram renouvelé (expire dans {expires}s ≈ 60 jours).")
-            _update_github_secret("IG_ACCESS_TOKEN", new_token)
-            return new_token
-        print(f"Avertissement : fb_exchange_token a répondu : {data}")
-    except Exception as e:
-        print(f"Avertissement : refresh token exception : {e}")
-    return token
-
-
-def fetch_instagram(token: str, year: int, month: int) -> dict:
-    """Retourne vues, likes, comments, shares, followers pour le mois."""
+def fetch_instagram(year: int, month: int) -> dict:
+    """Vues, likes, comments, shares sur la période ; abonnés = dernier followers_count connu."""
     since, until = instagram_bounds(year, month)
-
-    # Abonnés actuels
-    me = requests.get(
-        f"https://graph.facebook.com/v19.0/{IG_USER_ID}",
-        params={"fields": "followers_count", "access_token": token},
-        timeout=15,
-    ).json()
-    followers = me.get("followers_count", 0)
-
-    # Insights : metric_type=total_value requis depuis API v22+ pour ces métriques
-    metrics = ["views", "likes", "comments", "shares"]
-    insights = requests.get(
-        f"https://graph.facebook.com/v19.0/{IG_USER_ID}/insights",
+    resp = requests.get(
+        "https://connectors.windsor.ai/instagram",
         params={
-            "metric":      ",".join(metrics),
-            "period":      "day",
-            "metric_type": "total_value",
-            "since":       since,
-            "until":       until,
-            "access_token": token,
+            "api_key":    WINDSOR_IG_API_KEY,
+            "account_id": WINDSOR_IG_ACCOUNT_ID,
+            "date_from":  since,
+            "date_to":    until,
+            "fields":     "date,views,likes,comments,shares",
         },
         timeout=30,
     ).json()
+    if "error" in resp:
+        raise RuntimeError(f"Windsor.ai Instagram : {resp['error']}")
 
-    if "error" in insights:
-        raise RuntimeError(f"Instagram API error: {insights['error']}")
+    rows = [r for r in resp.get("data", []) if since <= r.get("date", "") < until]
+    if not rows:
+        raise ValueError(f"Windsor.ai Instagram : aucune donnée pour {since}→{until}")
 
-    totals = {m: 0 for m in metrics}
-    for item in insights.get("data", []):
-        m_name = item["name"]
-        tv = item.get("total_value", {})
-        if "value" in tv:
-            totals[m_name] = tv["value"]
-        else:
-            for val in item.get("values", []):
-                totals[m_name] = totals.get(m_name, 0) + val.get("value", 0)
+    views    = sum(int(r.get("views") or 0)    for r in rows)
+    likes    = sum(int(r.get("likes") or 0)    for r in rows)
+    comments = sum(int(r.get("comments") or 0) for r in rows)
+    shares   = sum(int(r.get("shares") or 0)   for r in rows)
 
-    print(f"Instagram : followers={followers}, vues={totals['views']}, "
-          f"likes={totals['likes']}, comments={totals['comments']}, shares={totals['shares']}")
-    return {
-        "followers":    followers,
-        "views":        totals["views"],
-        "likes":        totals["likes"],
-        "comments":     totals["comments"],
-        "shares":       totals["shares"],
-    }
+    snap = requests.get(
+        "https://connectors.windsor.ai/instagram",
+        params={
+            "api_key":    WINDSOR_IG_API_KEY,
+            "account_id": WINDSOR_IG_ACCOUNT_ID,
+            "date_from":  until,
+            "date_to":    date.today().isoformat(),
+            "fields":     "date,followers_count",
+        },
+        timeout=30,
+    ).json()
+    snapshots = [r for r in snap.get("data", []) if r.get("followers_count") is not None]
+    if not snapshots:
+        raise ValueError("Windsor.ai Instagram : aucun followers_count disponible")
+    followers = int(snapshots[-1]["followers_count"])
+
+    print(f"Instagram : followers={followers}, vues={views}, "
+          f"likes={likes}, comments={comments}, shares={shares}")
+    return {"followers": followers, "views": views, "likes": likes,
+            "comments": comments, "shares": shares}
 
 
 # ── TikTok (Windsor.ai) ─────────────────────────────────────────────────
@@ -484,16 +417,7 @@ def main():
     print(f"Cumulatif mois précédent : {prev}")
 
     # Instagram
-    ig_token = os.environ.get("IG_ACCESS_TOKEN", "")
-    if not ig_token:
-        # Lecture locale pour dev
-        cfg_path = Path(__file__).parent / "social_config.json"
-        if cfg_path.exists():
-            ig_token = json.loads(cfg_path.read_text()).get("instagram", {}).get("access_token", "")
-    if not ig_token:
-        raise ValueError("IG_ACCESS_TOKEN manquant")
-    ig_token = ig_refresh_token(ig_token)
-    ig = fetch_instagram(ig_token, year, month)
+    ig = fetch_instagram(year, month)
 
     # TikTok
     tt = fetch_tiktok(year, month)
